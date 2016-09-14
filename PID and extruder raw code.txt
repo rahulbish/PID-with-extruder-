@@ -1,0 +1,205 @@
+
+// defines pins numbers
+const int enablepin = 24; 
+const int stepPin = 26; 
+const int dirPin = 28; 
+
+
+#include <PID_v1.h>
+#include <math.h>
+#include <Wire.h>
+#define ThermistorPin 13           //Analog Pin thermistor connected   
+#define fan 9             //Analog pin temp pot connected
+#define HeaterPin 10                //digital PWM pin heater connected
+double SetPoint, ActualTemp, Output;
+
+double Kp=30, Ki=10 ,Kd =23 ;
+PID myPID(&ActualTemp, &Output, &SetPoint,Kp,Ki,Kd, DIRECT);
+double Thermister(int RawADC) 
+{
+ double steinhart , average ;
+
+#define THERMISTORNOMINAL 10000      
+// temp. for nominal resistance (almost always 25 C)
+#define TEMPERATURENOMINAL 25   
+// how many samples to take and average, more takes longer
+// but is more 'smooth'
+// The beta coefficient of the thermistor (usually 3000-4000)
+#define BCOEFFICIENT 3950
+// the value of the 'other' resistor
+#define SERIESRESISTOR 1000 
+ average =  RawADC ;
+ average = 1023 / average - 1;
+ average = SERIESRESISTOR / average;
+ steinhart = average / THERMISTORNOMINAL;     // (R/Ro)
+ steinhart = log(steinhart);                  // ln(R/Ro)
+ steinhart /= BCOEFFICIENT;                   // 1/B * ln(R/Ro)
+ steinhart += 1.0 / (TEMPERATURENOMINAL + 273.15); // + (1/To)
+ steinhart = 1.0 / steinhart;                 // Invert
+ steinhart -= 273.15;                         // convert to C
+ return steinhart;
+}
+ 
+void setup() 
+{
+  // Sets the two pins as Outputs
+  pinMode(stepPin,OUTPUT); 
+  pinMode(dirPin,OUTPUT);
+  pinMode(enablepin,OUTPUT);
+  digitalWrite(enablepin,LOW);
+  Serial.begin(9600);
+  pinMode(fan, OUTPUT);
+  pinMode(HeaterPin, OUTPUT);
+  //turn the PID on
+  myPID.SetMode(AUTOMATIC);
+  
+}
+void loop()
+{
+   start:
+   while(Serial.available()>0) 
+    {
+    
+    SetPoint = map(Serial.parseInt(),0,300,0,300) ;
+    
+     }
+    
+     ActualTemp = double(Thermister(analogRead(ThermistorPin)));
+     myPID.Compute();
+     
+      analogWrite(HeaterPin,Output);
+      Serial.println(ActualTemp);  // display 
+      
+      delay(10);
+      
+      if(ActualTemp > 1+SetPoint) 
+       {
+      digitalWrite(fan,HIGH);
+       }
+        else if(SetPoint+1 > ActualTemp)
+       { 
+        digitalWrite(fan,LOW);
+      }
+  
+   
+ while(true)
+   {
+    int inByte = Serial.read();
+    switch(inByte)
+     {
+      case 'a' :
+        jump();
+      
+       delay(10);
+        break;
+      case 's':
+        feed();
+     
+        delay(10);
+        break;
+      case 'd':
+        feed1();
+     
+        delay(10);
+        break;
+       case 'f':
+        feed2();
+       
+        delay(10);
+        break;  
+       default:
+       goto start;
+       
+    
+   }
+  }
+}
+   
+  
+
+
+
+
+
+
+  
+void jump() 
+{
+  digitalWrite(dirPin,HIGH); // Enables the motor to move in a particular direction
+  // Makes 200 pulses for making one full cycle rotation
+  for(int x = 0; x < 1000; x++)
+  {
+    digitalWrite(stepPin,HIGH); 
+    delayMicroseconds(50); 
+    digitalWrite(stepPin,LOW); 
+    delayMicroseconds(50); 
+  }
+  delay(100); // One second delay
+  
+  digitalWrite(dirPin,LOW); //Changes the rotations direction
+          // Makes 400 pulses for making two full cycle rotation
+  for(int x = 0; x < 1000; x++) 
+  {
+    digitalWrite(stepPin,HIGH);
+    delayMicroseconds(50);
+    digitalWrite(stepPin,LOW);
+    delayMicroseconds(50);
+  }
+  delay(10);
+}
+
+void feed()
+{
+  
+   digitalWrite(dirPin,LOW); // Enables the motor to move in a particular direction
+  // Makes 200 pulses for making one full cycle rotation while(tm)
+  for(int x = 0 ; x< 200 ;x++)
+  {
+    digitalWrite(stepPin,HIGH); 
+    delayMicroseconds(2000); 
+    digitalWrite(stepPin,LOW); 
+    delayMicroseconds(2000); 
+  }  
+  }
+
+void feed1()
+{
+  
+   digitalWrite(dirPin,LOW); // Enables the motor to move in a particular direction
+  // Makes 200 pulses for making one full cycle rotation while(tm)
+  for(int x = 0 ; x< 200 ;x++)
+  {
+    digitalWrite(stepPin,HIGH); 
+    delayMicroseconds(1000); 
+    digitalWrite(stepPin,LOW); 
+    delayMicroseconds(1000); 
+  }  
+  }
+
+void feed2()
+{
+  
+   digitalWrite(dirPin,LOW); // Enables the motor to move in a particular direction
+  // Makes 200 pulses for making one full cycle rotation while(tm)
+  for(int x = 0 ; x< 200 ;x++)
+  {
+    digitalWrite(stepPin,HIGH); 
+    delayMicroseconds(500); 
+    digitalWrite(stepPin,LOW); 
+    delayMicroseconds(500); 
+  }  
+  }
+void stop()
+{
+   digitalWrite(dirPin,LOW); // Enables the motor to move in a particular direction
+  // Makes 200 pulses for making one full cycle rotation
+ for(int x = 0 ; x< 1000 ;x++)
+  {
+    digitalWrite(stepPin,LOW); 
+     
+   
+  } 
+  }
+
+
+  
